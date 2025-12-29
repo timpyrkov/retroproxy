@@ -58,6 +58,10 @@ class RetroParser(HTMLParser):
             "map",
             "area",
         }
+        # Tags that are typically void/self-closing in HTML and therefore may not
+        # produce a corresponding end tag event. If such a tag is also in
+        # `_drop_content_tags`, it must not be pushed onto `_dropping_stack`.
+        self._drop_void_tags: Set[str] = {"source", "area"}
         self._dropping_stack: List[str] = []
 
         self._allowed_tags: Set[str] = {
@@ -111,6 +115,9 @@ class RetroParser(HTMLParser):
             return
 
         if tag == "body":
+            # Some pages rely on implicit head closure (no explicit </head>).
+            # When <body> starts, ensure we stop suppressing output as "in head".
+            self._in_head = False
             self._in_body = True
             self._saw_body = True
             return
@@ -127,6 +134,8 @@ class RetroParser(HTMLParser):
             return
 
         if tag in self._drop_content_tags:
+            if tag in self._drop_void_tags:
+                return
             self._dropping_stack.append(tag)
             return
 
@@ -188,6 +197,9 @@ class RetroParser(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         """Handle a self-closing tag (e.g. `<br/>`) from the source HTML."""
+        tag = tag.lower()
+        if tag in self._drop_content_tags:
+            return
         self.handle_starttag(tag, attrs)
         tag = tag.lower()
         if tag in self._allowed_tags and tag in self._void_tags:

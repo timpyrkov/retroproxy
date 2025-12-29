@@ -1,5 +1,6 @@
-import pathlib
 import sys
+import pathlib
+from scripts.retroproxy import RetroConverter
 
 
 # Allow `pytest` to import `scripts.retroproxy` when running from the repo root
@@ -8,8 +9,6 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-
-from scripts.retroproxy import RetroConverter
 
 
 def _read_fixture(name: str) -> str:
