@@ -474,6 +474,7 @@ def _parse_target_url(handler_path: str) -> Optional[str]:
     Supports two request styles:
     - Proxy form: `GET http://example.com/path ...`
     - Gateway form: `GET /fetch?url=http%3A%2F%2Fexample.com%2Fpath ...`
+    - Legacy gateway form: `GET /example.com/path ...` (interpreted as `http://example.com/path`)
     """
     path = handler_path.strip()
 
@@ -487,8 +488,34 @@ def _parse_target_url(handler_path: str) -> Optional[str]:
         qs = urllib.parse.parse_qs(parsed.query)
         url = (qs.get("url") or [""])[0]
         url = url.strip()
+        if not url:
+            return None
         if url.lower().startswith("http://") or url.lower().startswith("https://"):
             return url
+        # Allow users/clients to pass a bare host like `example.com`.
+        # Default to HTTP in that case.
+        return "http://" + url
+
+    # Legacy gateway style (used by some simple retro gateways/clients):
+    #   GET /example.com/path   -> http://example.com/path
+    #   GET /http://example.com -> http://example.com
+    # We only treat it as a target if it isn't just "/".
+    if parsed.path and parsed.path != "/":
+        candidate = path.lstrip("/")
+        candidate = candidate.strip()
+        if candidate:
+            first = candidate.split("/", 1)[0].strip()
+            if first.lower() == "favicon.ico":
+                return None
+
+            is_ip = bool(re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?", first))
+            looks_like_host = first == "localhost" or is_ip or ("." in first) or (":" in first)
+            if not looks_like_host:
+                return None
+
+            if not (candidate.lower().startswith("http://") or candidate.lower().startswith("https://")):
+                candidate = "http://" + candidate
+            return candidate
 
     return None
 
@@ -528,6 +555,8 @@ class RetroProxyHandler(BaseHTTPRequestHandler):
         if not target_url:
             self._serve_index()
             return
+
+        sys.stderr.write(f"Target URL: {target_url}\n")
 
         try:
             self._fetch_and_respond(target_url)
@@ -581,13 +610,27 @@ class RetroProxyHandler(BaseHTTPRequestHandler):
             content_type = resp.headers.get("content-type", "application/octet-stream")
             raw = resp.read()
 
+            final_url = None
+            try:
+                final_url = resp.geturl()
+            except Exception:
+                final_url = None
+
+        if final_url and final_url != url:
+            sys.stderr.write(f"Upstream redirect final URL: {final_url}\n")
+        sys.stderr.write(
+            f"Upstream response: {status} {reason}; content-type={content_type!r}; bytes={len(raw)}\n"
+        )
+
         if _is_html_content_type(content_type):
             converter = RetroConverter(keep_images=getattr(self.server, "keep_images", False))
-            base_url = url
+            base_url = final_url or url
             decoded = _decode_body(raw, content_type)
             out_html = converter.convert_to_string(decoded, base_url=base_url)
             out_html = _rewrite_links_to_proxy(out_html, current_url=base_url)
             body = out_html.encode("utf-8", errors="replace")
+
+            sys.stderr.write(f"Converted HTML bytes: {len(body)}\n")
 
             self.send_response(status, reason)
             self.send_header("Content-Type", "text/html; charset=utf-8")

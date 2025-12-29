@@ -1,4 +1,8 @@
-# htmlconverter / retroproxy
+<h1><p align="left">
+  <img src="https://github.com/timpyrkov/retroproxy/blob/master/logo.png?raw=true" alt="RetroProxy logo" height="30" style="vertical-align: middle; margin-right: 10px;">
+  <span style="font-size:2.5em; vertical-align: middle;"><b>RetroProxy</b></span>
+</p></h1>
+
 
 A small hobby project to convert modern web pages into simplified HTML that can be displayed by retro browsers (e.g. text-mode browsers and very old Windows browsers like Internet Explorer 3).
 
@@ -61,16 +65,38 @@ A modern proxy machine can:
 On your modern machine (Mac/Linux/Raspberry Pi/etc.), copy `scripts/retroproxy.py` to a location you want to run a local proxy server and run:
 
 ```bash
-python3 retroproxy.py --host 0.0.0.0 --port 8080
+python3 scripts/retroproxy.py --host 0.0.0.0 --port 8080
 ```
 
 - `--host 0.0.0.0` means “listen on all network interfaces”, so other devices on your LAN can access it.
 - The proxy prints a URL like `http://192.168.1.10:8080/`. Use `scripts/whatismyip.py` to check the actual IP address of your modern machine and use it in the URL. That is the address your retro PC should open.
 
+### Check if the port is already in use (macOS)
+
+If the proxy fails to start, another program may already be listening on the same port.
+
+Check if something is using port `8080`:
+
+```bash
+lsof -nP -iTCP:8080 -sTCP:LISTEN
+```
+
+List all listening TCP servers:
+
+```bash
+lsof -nP -iTCP -sTCP:LISTEN
+```
+
+Alternative (sometimes useful):
+
+```bash
+netstat -anv | grep LISTEN
+```
+
 ### Or keep images in proxied pages
 
 ```bash
-python3 retroproxy.py --host 0.0.0.0 --port 8080 -m
+python3 scripts/retroproxy.py --host 0.0.0.0 --port 8080 -m
 ```
 
 ## How to use it from the retro PC
@@ -167,6 +193,27 @@ This is a hobby project for a trusted home LAN.
 
 - Do not expose this proxy publicly to the internet.
 - It fetches arbitrary URLs that a client requests.
+
+### About `--host 0.0.0.0` (important)
+
+Binding to `0.0.0.0` means the proxy listens on **all** network interfaces on your machine.
+In practice that usually means:
+
+- It will be reachable from other devices on your LAN (this is what you want for a retro PC).
+- It may also be reachable from other networks your machine is connected to (for example: guest Wi‑Fi, VPN, etc.), depending on your routing and firewall settings.
+
+Potential risks:
+
+- Anyone who can reach your machine on that port can ask the proxy to fetch arbitrary URLs.
+- This can leak your public IP to websites, fetch unexpected content, or be abused if you accidentally expose it beyond your LAN.
+
+Safer options:
+
+- If you only want to test locally on the same Mac, bind to localhost:
+  - `--host 127.0.0.1` (only your machine can access it)
+- If you only want to serve your LAN, you can bind to your LAN IP instead of `0.0.0.0`:
+  - `--host 192.168.x.y`
+- Keep your firewall enabled and allow inbound access only from your local network.
 
 ## Files
 
