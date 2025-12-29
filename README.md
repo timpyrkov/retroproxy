@@ -187,6 +187,46 @@ Use the gateway style instead:
 
 - `http://<proxy-ip>:8080/fetch?url=https://example.com`
 
+## TODO: Search support (Google / alternatives)
+
+Today, many search homepages (including Google) are heavily JavaScript-driven and the converter intentionally strips scripts. This usually removes the interactive search UI.
+
+Possible variants (with feasibility notes):
+
+- **Variant A: Proxy-provided search page (recommended)**
+  - Add a simple HTML 3.2 search form served by RetroProxy itself (e.g. `/search`).
+  - On submit, the proxy redirects to a known “no-JS needed” results URL like:
+    - `https://www.google.com/search?q=...`
+  - The proxy then converts that results page and rewrites links as usual.
+  - Pros: reliable UI for retro browsers; no need to preserve modern homepage markup.
+  - Cons: Google results markup still changes; might require a more browser-like User-Agent.
+
+- **Variant B: Preserve basic `<form>` / `<input>` elements during conversion**
+  - Extend `RetroParser` to allow a minimal subset: `form`, `input`, `button`, `label`.
+  - Sanitize/keep only safe attributes like `action`, `method`, `type`, `name`, `value`.
+  - Rewrite `action` URLs so submissions stay proxied.
+  - Pros: could keep some simple search forms from various sites.
+  - Cons: many modern pages build forms dynamically with JS; Google homepage is unlikely to work fully.
+
+- **Variant C: Use a “lite” search frontend (best user experience, not Google-branded)**
+  - Add built-in support for text-first endpoints that don’t require JS.
+  - Examples to explore: DuckDuckGo HTML / “lite” interfaces, or other simple search gateways.
+  - Pros: stable HTML, easier for old browsers.
+  - Cons: not Google.
+
+- **Variant D: Pre-rendering / external rendering service (advanced)**
+  - Use a headless browser (Playwright/Chromium) to render JS-heavy pages server-side.
+  - Convert the rendered DOM to retro HTML.
+  - Pros: can handle truly JS-only sites.
+  - Cons: adds heavy dependencies, higher CPU/RAM, security considerations.
+
+Suggested short plan:
+
+1) Implement Variant A (`/search` page served by RetroProxy) and make it the default “start page” option.
+2) If needed, tune upstream request headers (User-Agent / Accept-Language) to get stable HTML results.
+3) Optionally add Variant B for generic “simple form preservation” on non-Google sites.
+4) Consider Variant D only if you really need JS-heavy websites.
+
 ## Security note
 
 This is a hobby project for a trusted home LAN.
