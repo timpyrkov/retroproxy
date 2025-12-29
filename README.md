@@ -1,16 +1,58 @@
 <h1><p align="left">
-  <img src="https://github.com/timpyrkov/retroproxy/blob/master/logo.png?raw=true" alt="RetroProxy logo" height="30" style="vertical-align: middle; margin-right: 10px;">
+  <img src="https://github.com/timpyrkov/retroproxy/blob/master/img/logo.png?raw=true" alt="RetroProxy logo" height="30" style="vertical-align: middle; margin-right: 10px;">
   <span style="font-size:2.5em; vertical-align: middle;"><b>RetroProxy</b></span>
 </p></h1>
 
 
-A small hobby project to convert modern web pages into simplified HTML that can be displayed by retro browsers (e.g. text-mode browsers and very old Windows browsers like Internet Explorer 3).
+Convert modern web pages to simplified HTML consumable by retro browsers.
 
-This repository contains:
+Very old DOS/Windows browsers like DOSLYNX, Internet Explorer 3/4 cannot display most modern web pages.
 
-- `scripts/retroproxy.py` — the main script. Runs a local “retro gateway” proxy server on a modern machine (Mac/Linux) so a retro PC on the same LAN can browse *through* it.
-- `scripts/whatismyip.py` — helper tool to print local interface IPv4 addresses.
-- `tests/test_converter.py` — pytest + manual test runner for the HTML converter.
+This project removes unsupported parts (JS, CSS, SVG, canvas, video, etc.), keeps links, and produces simple HTML compatible with HTML 3.2.
+
+### Typical setup (Proxy Server and Retro PC on the same LAN)
+
+```text
+         Modern PC                              Retro PC      
+       (Mac, Linux)                         (DOS, Win 95/98)    
+     ________________                       ________________     
+    |  ____________  |                     |  ____________  |    
+    | |            | |     URL / Domain    | |            | |    
+    | |   Server   | | <------------------ | |   Client   | |    
+    | |            | |                     | |            | |    
+    | |____________| | ------------------> | |____________| |    
+    |________________|   Simplified HTML   |________________|    
+       _|________|_                           _|________|_       
+     _/ ********** \_                       _/ ********** \_     
+    /  ************  \                     /  ************  \    
+    ------------------                     ------------------    
+                :                               :                
+                .................................                
+                               LAN                               
+```
+
+### Quick start (Windows 95/98)
+
+**On your modern machine** (Mac/Linux/Raspberry Pi/etc.), copy `scripts/retroproxy.py` to a location you want to run a local proxy server and run:
+
+```bash
+python3 scripts/retroproxy.py
+```
+
+The proxy will print a URL like `http://192.168.1.10:8080/`. Use `scripts/whatismyip.py` to check its actual IP address.
+
+**On your retro PC**, open the proxy URL like `http://192.168.1.10:8080/` in the browser. Use the actual IP address of your modern machine instead of `192.168.1.10`.
+
+You will see a start page with a form to enter a URL and start browsing.
+
+![RetroProxy index page](https://github.com/timpyrkov/retroproxy/blob/master/img/index.png?raw=true)
+
+
+### Quick start (DOS)
+
+Set up a proxy server on a modern machine (Mac, Linux, etc.) and open the proxy URL using the `LYNX.BAT` file.
+
+See details in the `dos/README.md` file.
 
 ## What this project does (in plain words)
 
@@ -23,29 +65,14 @@ Modern web pages contain a lot of things that old browsers cannot handle:
 
 This project fetches the page on a modern computer, removes unsupported parts, keeps links, and produces simple HTML closer to the HTML 3.2 era.
 
-## Requirements
+### Full browsing mode (every click stays proxied)
 
-- Python 3 (no third-party dependencies)
-- A modern machine to run the proxy (MacOS, Ubuntu, Raspberry Pi OS, etc.)
-- A retro machine (optional) such as Windows 95/98 with IE3/IE4, or DOS + Lynx, on the same LAN
+The proxy rewrites links in converted HTML so that:
 
-## Quick start: test the converter
+- clicking links keeps you inside the proxy
+- relative URLs are normalized against the current page
 
-The HTML converter logic lives inside `scripts/retroproxy.py` (classes `RetroParser` and `RetroConverter`).
-
-### Run tests with pytest
-
-```bash
-pytest -q
-```
-
-### Manual conversion run (writes converted files next to fixtures)
-
-```bash
-python3 tests/test_converter.py
-```
-
-## Main Goal: browse the web from a retro PC through a modern machine
+So you can usually navigate by clicking as you would normally.
 
 ### Why a proxy/gateway is needed
 
@@ -60,15 +87,21 @@ A modern proxy machine can:
 2) convert it to simplified HTML
 3) serve it to the retro browser over plain HTTP
 
+## Requirements
+
+- Python 3 (no third-party dependencies)
+- A modern machine to run the proxy (MacOS, Ubuntu, Raspberry Pi OS, etc.)
+- A retro machine (optional) such as Windows 95/98 with IE3/IE4, or DOS + Lynx, on the same LAN
+
 ## Run the retro proxy (modern machine)
 
-On your modern machine (Mac/Linux/Raspberry Pi/etc.), copy `scripts/retroproxy.py` to a location you want to run a local proxy server and run:
+Run:
 
 ```bash
-python3 scripts/retroproxy.py --host 0.0.0.0 --port 8080
+python3 scripts/retroproxy.py
 ```
 
-- `--host 0.0.0.0` means “listen on all network interfaces”, so other devices on your LAN can access it.
+- Use `--host 0.0.0.0` to listen on all network interfaces, so other devices on your LAN can access it.
 - The proxy prints a URL like `http://192.168.1.10:8080/`. Use `scripts/whatismyip.py` to check the actual IP address of your modern machine and use it in the URL. That is the address your retro PC should open.
 
 ### Check if the port is already in use (macOS)
@@ -93,50 +126,17 @@ Alternative (sometimes useful):
 netstat -anv | grep LISTEN
 ```
 
+## Run with specific port
+
+```bash
+python3 scripts/retroproxy.py --port 8080
+```
+
 ### Or keep images in proxied pages
 
 ```bash
-python3 scripts/retroproxy.py --host 0.0.0.0 --port 8080 -m
+python3 scripts/retroproxy.py --port 8080 -m
 ```
-
-## How to use it from the retro PC
-
-### Step 1: find the proxy machine IP
-
-When you start `scripts/retroproxy.py`, it prints something like:
-
-- `Retro proxy listening on http://192.168.1.10:8080/`
-
-In this EXAMPLE:
-
-- Proxy IP is `192.168.1.10`
-- Proxy port is `8080`
-
-### Step 2: open the proxy start page in IE
-
-In the retro browser, open:
-
-- `http://192.168.1.10:8080/`
-
-You’ll see a simple page with a text box.
-
-### Step 3: type a URL into the form
-
-Examples:
-
-- `http://example.com`
-- `https://en.wikipedia.org/wiki/Barcelona`
-
-The proxy will fetch the page on the modern machine, convert it, and return simplified HTML.
-
-### Full browsing mode (every click stays proxied)
-
-The proxy rewrites links in converted HTML so that:
-
-- clicking links keeps you inside the proxy
-- relative URLs are normalized against the current page
-
-So you can usually navigate by clicking as you would normally.
 
 ## Optional: configure IE3/IE4 to use the proxy as an HTTP proxy
 
@@ -152,80 +152,6 @@ Notes:
 - Modern HTTPS sites usually still won’t work transparently because browsers use `CONNECT` for HTTPS tunneling.
 - This proxy intentionally does **not** MITM HTTPS and responds with “CONNECT not supported”.
 
-## Networking checklist (beginner friendly)
-
-If the retro PC cannot connect to the proxy:
-
-- Confirm both machines are on the same LAN and can ping each other.
-- Make sure your modern machine firewall allows inbound connections to port `8080`.
-- Try opening `http://<proxy-ip>:8080/` from another modern machine first (phone/laptop) to verify it is reachable.
-- On the modern machine, keep the `retroproxy.py` running while browsing.
-
-## Troubleshooting
-
-### The proxy start page opens, but some sites show empty content
-
-Some modern sites render the page almost entirely using JavaScript.
-
-This project removes scripts and produces a simplified HTML view, but if the original HTML contains no meaningful server-rendered content, the result can be minimal.
-
-### Images do not show in the retro browser
-
-Possible reasons:
-
-- The page uses HTTPS image URLs and the browser can’t fetch them.
-- The images are in a modern format like WebP/AVIF.
-- The server blocks hotlinking or requires modern headers.
-
-Try browsing with images disabled (default) or rely on ALT text.
-
-### “CONNECT not supported”
-
-This happens when a browser tries to tunnel HTTPS through the proxy.
-
-Use the gateway style instead:
-
-- `http://<proxy-ip>:8080/fetch?url=https://example.com`
-
-## TODO: Search support (Google / alternatives)
-
-Today, many search homepages (including Google) are heavily JavaScript-driven and the converter intentionally strips scripts. This usually removes the interactive search UI.
-
-Possible variants (with feasibility notes):
-
-- **Variant A: Proxy-provided search page (recommended)**
-  - Add a simple HTML 3.2 search form served by RetroProxy itself (e.g. `/search`).
-  - On submit, the proxy redirects to a known “no-JS needed” results URL like:
-    - `https://www.google.com/search?q=...`
-  - The proxy then converts that results page and rewrites links as usual.
-  - Pros: reliable UI for retro browsers; no need to preserve modern homepage markup.
-  - Cons: Google results markup still changes; might require a more browser-like User-Agent.
-
-- **Variant B: Preserve basic `<form>` / `<input>` elements during conversion**
-  - Extend `RetroParser` to allow a minimal subset: `form`, `input`, `button`, `label`.
-  - Sanitize/keep only safe attributes like `action`, `method`, `type`, `name`, `value`.
-  - Rewrite `action` URLs so submissions stay proxied.
-  - Pros: could keep some simple search forms from various sites.
-  - Cons: many modern pages build forms dynamically with JS; Google homepage is unlikely to work fully.
-
-- **Variant C: Use a “lite” search frontend (best user experience, not Google-branded)**
-  - Add built-in support for text-first endpoints that don’t require JS.
-  - Examples to explore: DuckDuckGo HTML / “lite” interfaces, or other simple search gateways.
-  - Pros: stable HTML, easier for old browsers.
-  - Cons: not Google.
-
-- **Variant D: Pre-rendering / external rendering service (advanced)**
-  - Use a headless browser (Playwright/Chromium) to render JS-heavy pages server-side.
-  - Convert the rendered DOM to retro HTML.
-  - Pros: can handle truly JS-only sites.
-  - Cons: adds heavy dependencies, higher CPU/RAM, security considerations.
-
-Suggested short plan:
-
-1) Implement Variant A (`/search` page served by RetroProxy) and make it the default “start page” option.
-2) If needed, tune upstream request headers (User-Agent / Accept-Language) to get stable HTML results.
-3) Optionally add Variant B for generic “simple form preservation” on non-Google sites.
-4) Consider Variant D only if you really need JS-heavy websites.
 
 ## Security note
 

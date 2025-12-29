@@ -596,7 +596,7 @@ class RetroProxyHandler(BaseHTTPRequestHandler):
             "<center>\n"
             "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n"
             "<tr>\n"
-            "<td valign=\"middle\"><img src=\"https://github.com/timpyrkov/retroproxy/blob/master/logo.png?raw=true\" alt=\"RetroProxy\" height=\"50\" align=\"middle\"></td>\n"
+            "<td valign=\"middle\"><img src=\"https://github.com/timpyrkov/retroproxy/blob/master/img/logo.png?raw=true\" alt=\"RetroProxy\" height=\"50\" align=\"middle\"></td>\n"
             "<td valign=\"middle\">&nbsp;<font size=\"7\"><b> RetroProxy</b></font></td>\n"
             "</tr>\n"
             "</table>\n"
