@@ -1,7 +1,5 @@
 import sys
 import pathlib
-from scripts.retroproxy import RetroConverter
-
 
 # Allow `pytest` to import `scripts.retroproxy` when running from the repo root
 # without installing as a package.
@@ -10,8 +8,42 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 
+from scripts.retroproxy import RetroConverter
+
+
+def _ensure_fixtures_present() -> None:
+    tests_dir = pathlib.Path(__file__).resolve().parent
+    fixtures = [
+        ("Dosbox.html", "https://www.dosbox.com/"),
+        ("Google.html", "https://www.google.com/"),
+        ("Barcelona.html", "https://en.wikipedia.org/wiki/Barcelona"),
+    ]
+
+    missing = [name for name, _url in fixtures if not (tests_dir / name).exists()]
+    if not missing:
+        return
+
+    import shutil
+    import subprocess
+
+    wget = shutil.which("wget")
+    if not wget:
+        raise RuntimeError(
+            "Missing HTML fixtures: "
+            + ", ".join(missing)
+            + ". Install wget or add these files manually to tests/."
+        )
+
+    for name, url in fixtures:
+        dst = tests_dir / name
+        if dst.exists():
+            continue
+        subprocess.run([wget, url, "-O", str(dst)], check=True)
+
+
 
 def _read_fixture(name: str) -> str:
+    _ensure_fixtures_present()
     p = pathlib.Path(__file__).resolve().parent / name
     return p.read_text(encoding="utf-8", errors="replace")
 
