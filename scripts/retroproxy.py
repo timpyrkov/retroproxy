@@ -563,6 +563,11 @@ class RetroProxyHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         """Serve the index page or fetch+convert an upstream URL."""
+        parsed = urllib.parse.urlsplit(self.path)
+        if parsed.path == "/search":
+            self._handle_search(parsed.query)
+            return
+
         target_url = _parse_target_url(self.path)
         if not target_url:
             self._serve_index()
@@ -582,20 +587,36 @@ class RetroProxyHandler(BaseHTTPRequestHandler):
 
     def _serve_index(self) -> None:
         """Serve a tiny HTML 3.2 start page with a URL entry form."""
+        host = (self.headers.get("Host") or "<proxy-ip>:<port>").strip()
+        base = f"http://{host}"
+
         html = (
             "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2//EN\">\n"
-            "<html><head><title>Retro Proxy</title></head><body>\n"
-            "<h1>Retro Proxy</h1>\n"
-            "<p>Enter a URL to fetch and convert:</p>\n"
+            "<html><head><title>RetroProxy</title></head><body>\n"
+            "<center>\n"
+            "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n"
+            "<tr>\n"
+            "<td valign=\"middle\"><img src=\"https://github.com/timpyrkov/retroproxy/blob/master/logo.png?raw=true\" alt=\"RetroProxy\" height=\"50\" align=\"middle\"></td>\n"
+            "<td valign=\"middle\">&nbsp;<font size=\"7\"><b> RetroProxy</b></font></td>\n"
+            "</tr>\n"
+            "</table>\n"
+            "<p>Local proxy server to browse modern web using retro browsers</p>\n"
+            "</center>\n"
+            "<hr>\n"
+            "<center>\n"
+            "<h2>Usage:</h2>\n"
+            "<h3> Get simplified HTML by exact URL through proxy:</h3>\n"
+            f"<p>Example: <a href=\"{base}/fetch?url=http%3A%2F%2Fexample.com\">{base}/fetch?url=http://example.com</a></p>\n"
+            "<h3> OR: paste a URL or domain in the form below (example: <i>example.com</i>):</h3>\n"
+            "<center>\n"
             "<form action=\"/fetch\" method=\"get\">\n"
             "<input type=\"text\" name=\"url\" size=\"60\">\n"
             "<input type=\"submit\" value=\"Go\">\n"
             "</form>\n"
-            "<p>Examples:</p>\n"
-            "<ul>\n"
-            "<li><a href=\"/fetch?url=http%3A%2F%2Fexample.com\">http://example.com</a></li>\n"
-            "<li><a href=\"/fetch?url=https%3A%2F%2Fexample.com\">https://example.com</a></li>\n"
-            "</ul>\n"
+            "</center>\n"
+            "<h3> OR: search the web via proxy (shows first 10 results):</h3>\n"
+            "<p><a href=\"/search\">Open search page</a></p>\n"
+            "</center>\n"
             "</body></html>\n"
         )
         body = html.encode("utf-8", errors="replace")
@@ -605,13 +626,71 @@ class RetroProxyHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _handle_search(self, query: str) -> None:
+        qs = urllib.parse.parse_qs(query)
+        q = (qs.get("q") or [""])[0].strip()
+        engine = (qs.get("engine") or ["ddg"])[0].strip().lower() or "ddg"
+        if not q:
+            self._serve_search_form()
+            return
+
+        if engine == "google":
+            target_url = (
+                "https://www.google.com/search?gbv=1&q="
+                + urllib.parse.quote_plus(q)
+                + "&num=10"
+            )
+        else:
+            # DuckDuckGo provides a static HTML endpoint that tends to work well
+            # with retro browsers and the RetroProxy converter.
+            target_url = "https://duckduckgo.com/html/?q=" + urllib.parse.quote_plus(q)
+
+        location = "/fetch?url=" + urllib.parse.quote(target_url, safe="")
+
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.send_header("Connection", "close")
+        self.end_headers()
+
+    def _serve_search_form(self) -> None:
+        html = (
+            "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2//EN\">\n"
+            "<html><head><title>RetroProxy Search</title></head><body>\n"
+            "<center>\n"
+            "<h1>RetroProxy Search</h1>\n"
+            "<p>Search via RetroProxy</p>\n"
+            "</center>\n"
+            "<hr>\n"
+            "<center>\n"
+            "<form action=\"/search\" method=\"get\">\n"
+            "<input type=\"text\" name=\"q\" size=\"60\">\n"
+            "<br>\n"
+            "<input type=\"radio\" name=\"engine\" value=\"ddg\" checked>DuckDuckGo\n"
+            "<input type=\"radio\" name=\"engine\" value=\"google\">Google\n"
+            "<br>\n"
+            "<input type=\"submit\" value=\"Search\">\n"
+            "</form>\n"
+            "<p><a href=\"/\">Back to start page</a></p>\n"
+            "</center>\n"
+            "</body></html>\n"
+        )
+        body = html.encode("utf-8", errors="replace")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+
     def _fetch_and_respond(self, url: str) -> None:
         """Fetch upstream content, convert HTML if needed, and write response."""
         req = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "retroproxy/0.1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
                 "Accept-Encoding": "identity",
             },
         )

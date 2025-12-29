@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
+
 """
 Cross-platform script to display IPv4 addresses for all network interfaces.
 Works on Windows, macOS, and Ubuntu/Linux systems.
@@ -8,6 +10,7 @@ import re
 import sys
 import subprocess
 import platform
+import chardet
 
 
 def get_linux_ips():
@@ -44,11 +47,15 @@ def get_windows_ips():
         result = subprocess.run(
             ['ipconfig'],
             capture_output=True,
-            text=True,
+            text=False,  # Return output as bytes
             check=True
         )
-        return result.stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
+
+        # Detect encoding and decode output
+        encoding = chardet.detect(result.stdout).get('encoding', 'utf-8')
+        output = result.stdout.decode(encoding)
+        return output
+    except (subprocess.CalledProcessError, FileNotFoundError, UnicodeDecodeError):
         return None
 
 
@@ -123,58 +130,67 @@ def parse_macos_output(output):
 
 
 def parse_windows_output(output):
-    """Parse Windows 'ipconfig' output and format it nicely."""
+    """Parse Windows 'ipconfig' output and extract IPv4 addresses."""
     lines = output.strip().split('\n')
     interfaces = {}
     current_interface = None
-    current_subnet = None
-    
-    for i, line in enumerate(lines):
-        # Check if this is an adapter/interface name line
-        # Windows format: "Ethernet adapter Ethernet:" or "Wireless LAN adapter Wi-Fi:"
-        adapter_match = re.match(r'^([^:]+):\s*$', line.strip())
-        if adapter_match:
-            current_interface = adapter_match.group(1).strip()
+
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+
+        # Skip empty lines and the "Windows IP Configuration" header
+        if not line:
+            i += 1
+            continue
+
+        # Check for adapter name (ends with a colon)
+        if line.endswith(':'):
+            current_interface = line[:-1].strip()
             interfaces[current_interface] = []
-            current_subnet = None
-        
-        # Check for IPv4 addresses
-        # Windows format: "   IPv4 Address. . . . . . . . . . . : 192.168.1.100"
+            i += 1
+            continue
+
+        # Check for IPv4 address line (look for patterns like 192.168.x.x)
         if current_interface:
-            ipv4_match = re.search(r'IPv4 Address[^:]*:\s*(\d+\.\d+\.\d+\.\d+)', line, re.IGNORECASE)
+            ipv4_match = re.search(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', line)
             if ipv4_match:
-                ip = ipv4_match.group(1)
-                # Look ahead for subnet mask (usually on next few lines)
+                ip = ipv4_match.group(0)
+
+                # Look for subnet mask in the next lines (pattern like 255.255.255.x)
                 subnet = None
-                for j in range(i + 1, min(i + 5, len(lines))):
-                    subnet_match = re.search(r'Subnet Mask[^:]*:\s*(\d+\.\d+\.\d+\.\d+)', lines[j], re.IGNORECASE)
+                j = i + 1
+                while j < len(lines):
+                    next_line = lines[j].strip()
+                    subnet_match = re.search(r'\b255\.(?:\d{1,3}\.){2}255\b', next_line)
                     if subnet_match:
-                        subnet = subnet_match.group(1)
+                        subnet = subnet_match.group(0)
                         break
-                
-                # Convert subnet mask to CIDR if available
+                    j += 1
+
+                # Convert subnet mask to CIDR notation
                 cidr = ''
                 if subnet:
                     octets = subnet.split('.')
                     binary = ''.join([bin(int(o))[2:].zfill(8) for o in octets])
                     cidr_bits = binary.count('1')
                     cidr = f"/{cidr_bits}"
-                
+
                 interfaces[current_interface].append((ip, cidr))
-    
-    # Format output similar to Linux 'ip -4 addr'
+                i = j  # Skip ahead to avoid reprocessing
+                continue
+
+        i += 1
+
+    # Format output
     formatted_lines = []
-    interface_num = 1
     for interface, ips in interfaces.items():
         if ips:  # Only show interfaces with IP addresses
             for ip, cidr in ips:
-                # Clean up interface name (remove "adapter" and extra words)
-                clean_name = re.sub(r'\s+adapter\s+', ' ', interface, flags=re.IGNORECASE)
-                clean_name = clean_name.strip()
-                formatted_lines.append(f"{interface_num}: {clean_name}: <UP>")
-                formatted_lines.append(f"    inet {ip}{cidr} scope global {clean_name}")
-                interface_num += 1
-    
+                formatted_lines.append(f"Interface: {interface}")
+                formatted_lines.append(f"    IPv4: {ip}{cidr}")
+                formatted_lines.append("")
+
     return '\n'.join(formatted_lines)
 
 
