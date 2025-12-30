@@ -634,16 +634,21 @@ class RetroProxyHandler(BaseHTTPRequestHandler):
             self._serve_search_form()
             return
 
+        q_enc = urllib.parse.quote_plus(q)
         if engine == "google":
-            target_url = (
-                "https://www.google.com/search?gbv=1&q="
-                + urllib.parse.quote_plus(q)
-                + "&num=10"
-            )
+            target_url = "https://www.google.com/search?gbv=1&q=" + q_enc + "&num=10"
+        elif engine == "bing":
+            target_url = "https://www.bing.com/search?q=" + q_enc
+        elif engine == "yahoo":
+            target_url = "https://search.yahoo.com/search?p=" + q_enc
+        elif engine == "yandex":
+            target_url = "https://yandex.com/search/?text=" + q_enc
+        elif engine == "baidu":
+            target_url = "https://www.baidu.com/s?wd=" + q_enc
         else:
             # DuckDuckGo provides a static HTML endpoint that tends to work well
             # with retro browsers and the RetroProxy converter.
-            target_url = "https://duckduckgo.com/html/?q=" + urllib.parse.quote_plus(q)
+            target_url = "https://duckduckgo.com/html/?q=" + q_enc
 
         location = "/fetch?url=" + urllib.parse.quote(target_url, safe="")
 
@@ -663,11 +668,17 @@ class RetroProxyHandler(BaseHTTPRequestHandler):
             "</center>\n"
             "<hr>\n"
             "<center>\n"
+            "<p><small>Note: some search engines may limit or block results when they suspect automated (bot) traffic.</small></p>\n"
             "<form action=\"/search\" method=\"get\">\n"
             "<input type=\"text\" name=\"q\" size=\"60\">\n"
             "<br>\n"
             "<input type=\"radio\" name=\"engine\" value=\"ddg\" checked>DuckDuckGo\n"
             "<input type=\"radio\" name=\"engine\" value=\"google\">Google\n"
+            "<input type=\"radio\" name=\"engine\" value=\"bing\">Bing\n"
+            "<br>\n"
+            "<input type=\"radio\" name=\"engine\" value=\"yahoo\">Yahoo\n"
+            "<input type=\"radio\" name=\"engine\" value=\"yandex\">Yandex\n"
+            "<input type=\"radio\" name=\"engine\" value=\"baidu\">Baidu\n"
             "<br>\n"
             "<input type=\"submit\" value=\"Search\">\n"
             "</form>\n"

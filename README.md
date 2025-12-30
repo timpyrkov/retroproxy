@@ -33,10 +33,22 @@ This project removes unsupported parts (JS, CSS, SVG, canvas, video, etc.), keep
 
 ### Quick start (Windows 95/98)
 
-**On your modern machine** (Mac/Linux/Raspberry Pi/etc.), copy `scripts/retroproxy.py` to a location you want to run a local proxy server and run:
+**On your modern machine** (Mac/Linux/Raspberry Pi/etc.), copy `scripts/retroproxy.py` to a location you want to run a local proxy server and run (defaults to blind host `0.0.0.0`):
 
 ```bash
-python3 scripts/retroproxy.py
+python3 retroproxy.py
+```
+
+OR get your server machine IP address:
+
+```bash
+python3 whatismyip.py
+```
+
+and run with specific host, for example:
+
+```bash
+python3 retroproxy.py --host 192.168.1.10
 ```
 
 The proxy will print a URL like `http://192.168.1.10:8080/`. Use `scripts/whatismyip.py` to check its actual IP address.
@@ -101,8 +113,8 @@ Run:
 python3 scripts/retroproxy.py
 ```
 
-- Use `--host 0.0.0.0` to listen on all network interfaces, so other devices on your LAN can access it.
-- The proxy prints a URL like `http://192.168.1.10:8080/`. Use `scripts/whatismyip.py` to check the actual IP address of your modern machine and use it in the URL. That is the address your retro PC should open.
+- Default `--host` is `0.0.0.0` (listen on all network interfaces), so other devices on your LAN can access it.
+- When binding to `0.0.0.0`, the proxy tries best-effort LAN IP detection only to print a friendlier URL like `http://192.168.1.10:8080/`.
 
 ### Check if the port is already in use (macOS)
 
@@ -160,7 +172,7 @@ This is a hobby project for a trusted home LAN.
 - Do not expose this proxy publicly to the internet.
 - It fetches arbitrary URLs that a client requests.
 
-### About `--host 0.0.0.0` (important)
+### About default `--host 0.0.0.0` (important)
 
 Binding to `0.0.0.0` means the proxy listens on **all** network interfaces on your machine.
 In practice that usually means:
