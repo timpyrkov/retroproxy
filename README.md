@@ -36,6 +36,10 @@ This project removes unsupported parts (JS, CSS, SVG, canvas, video, etc.), keep
 **On your modern machine** (Mac/Linux/Raspberry Pi/etc.), copy `scripts/retroproxy.py` to a location you want to run a local proxy server and run (defaults to blind host `0.0.0.0`):
 
 ```bash
+pip install -r requirements.txt
+```
+
+```bash
 python3 retroproxy.py
 ```
 

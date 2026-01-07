@@ -29,16 +29,24 @@ def get_linux_ips():
 
 def get_macos_ips():
     """Get IP addresses on macOS using 'ifconfig' command."""
-    try:
-        result = subprocess.run(
-            ['ifconfig'],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        return result.stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
+    # On macOS, ifconfig is typically at /sbin/ifconfig
+    # Try both the command name and full path
+    for ifconfig_cmd in ['ifconfig', '/sbin/ifconfig']:
+        try:
+            result = subprocess.run(
+                [ifconfig_cmd],
+                capture_output=True,
+                text=True,
+                check=False  # Don't raise on non-zero exit, check manually
+            )
+            # If command succeeded and we have output, return it
+            if result.returncode == 0 and result.stdout:
+                return result.stdout
+            # If command failed but we have stderr, it might be a permission issue
+            # but we'll try the next path anyway
+        except FileNotFoundError:
+            continue
+    return None
 
 
 def get_windows_ips():
@@ -221,6 +229,8 @@ def main():
                 print("No IPv4 addresses found.")
         else:
             print("Error: Could not execute 'ifconfig' command.")
+            print("Note: On macOS, ifconfig requires appropriate permissions.")
+            print("If you see 'Operation not permitted', you may need to run with appropriate permissions.")
             sys.exit(1)
     
     elif system == 'windows':
