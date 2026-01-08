@@ -40,19 +40,19 @@ pip install -r requirements.txt
 ```
 
 ```bash
-python3 retroproxy.py
+python retroproxy.py
 ```
 
 OR get your server machine IP address:
 
 ```bash
-python3 whatismyip.py
+python whatismyip.py
 ```
 
 and run with specific host, for example:
 
 ```bash
-python3 retroproxy.py --host 192.168.1.10
+python retroproxy.py --host 192.168.1.10
 ```
 
 The proxy will print a URL like `http://192.168.1.10:8080/`. Use `scripts/whatismyip.py` to check its actual IP address.
@@ -62,6 +62,19 @@ The proxy will print a URL like `http://192.168.1.10:8080/`. Use `scripts/whatis
 You will see a start page with a form to enter a URL and start browsing.
 
 ![RetroProxy index page](https://github.com/timpyrkov/retroproxy/blob/master/img/index.png?raw=true)
+
+
+### Troubleshooting
+
+- **Symptom: Garbled “Bad request version” errors in the proxy console**
+  - Example log line: `code 400, message Bad request version ('...')`
+  - **Cause**: A browser is trying to talk HTTPS/TLS to the RetroProxy server, which only speaks plain HTTP.
+  - **Fix**:
+    - Make sure you open the proxy with `http://<proxy-ip>:8080/` (not `https://`).
+    - If your browser auto‑upgrades to HTTPS, try:
+      - Typing the full URL manually with `http://`.
+      - Clearing HSTS / site settings for that IP/host.
+      - Or using a different browser / client that does not force HTTPS.
 
 
 ### Quick start (DOS)
