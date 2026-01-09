@@ -1,3 +1,10 @@
-chardet
+# Python package dependencies for retroproxy project
+#
+# Install with: pip install -r requirements.txt
 
+# For whatismyip.py - encoding detection on Windows
+chardet>=5.0.0
+
+# For running tests (optional, but recommended)
+pytest>=7.0.0
 
